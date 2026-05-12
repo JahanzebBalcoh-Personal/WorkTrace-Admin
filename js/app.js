@@ -1,4 +1,4 @@
-// WorkTrace Admin - Professional Agency OS Logic
+// WorkTrace Admin - Kanban & Professional OS Logic
 const firebaseConfig = {
   apiKey: "AIzaSyDdRwSkiB4DjRg_W_dh5B50vUzsJtg-dyA",
   authDomain: "worktrace-agency.firebaseapp.com",
@@ -52,13 +52,10 @@ function switchView(viewId, title) {
 
 // ─── LISTENERS ───
 function startListeners() {
-    // Projects Listener
     db.collection('projects').orderBy('createdAt', 'desc').onSnapshot(snap => {
         allProjects = snap.docs.map(d => ({id: d.id, ...d.data()}));
         renderAll();
     });
-
-    // Users Listener
     db.collection('users').onSnapshot(snap => {
         allUsers = snap.docs.map(d => ({id: d.id, ...d.data()}));
         renderUsers();
@@ -68,7 +65,7 @@ function startListeners() {
 // ─── RENDERING ───
 function renderAll() {
     renderDashboard();
-    renderProjectsList();
+    renderKanban();
     calculateStats();
 }
 
@@ -84,34 +81,34 @@ function renderDashboard() {
                     <div style="width: ${p.progress}%; height: 100%; background: var(--accent); border-radius: 10px;"></div>
                 </div>
             </td>
-            <td><span class="status-badge status-active">${p.status}</span></td>
+            <td><span class="status-badge">${p.currentPhase || 'Drafting'}</span></td>
             <td>${p.deadline || 'N/A'}</td>
-            <td><button onclick="switchView('projects', 'Project Management')" class="btn-tiny">View</button></td>
+            <td><button onclick="switchView('projects', 'Kanban Board')" class="btn-tiny">Board</button></td>
         </tr>
     `).join('');
 }
 
-function renderProjectsList() {
-    const list = document.getElementById('full-project-list');
-    list.innerHTML = allProjects.map(p => `
-        <tr>
-            <td><b>${p.name}</b></td>
-            <td>
-                <div style="font-size:11px; color:var(--muted);">${p.clientEmail}</div>
-                ${p.rawAssets ? `<a href="${p.rawAssets}" target="_blank" style="font-size:10px; color:var(--accent);">Download Assets</a>` : '<span style="font-size:10px; color:var(--red);">No Assets Yet</span>'}
-            </td>
-            <td>
-                <div style="font-size:11px; color:var(--muted);">${p.editorEmail}</div>
-                ${p.editorLink ? `<a href="${p.editorLink}" target="_blank" style="font-size:10px; color:var(--green);">Review Work</a>` : ''}
-            </td>
-            <td><span class="status-badge">${p.currentPhase || 'Drafting'}</span></td>
-            <td>$${p.editorFee}</td>
-            <td>
-                <button onclick="updateProgress('${p.id}')" class="btn-tiny">Next Step</button>
-                <button onclick="deleteProject('${p.id}')" class="btn-tiny" style="color:#ef4444;">Del</button>
-            </td>
-        </tr>
-    `).join('');
+function renderKanban() {
+    const columns = document.querySelectorAll('.kanban-col');
+    columns.forEach(col => {
+        const phase = col.getAttribute('data-phase');
+        const body = col.querySelector('.col-body');
+        const count = col.querySelector('.count');
+        
+        const projects = allProjects.filter(p => (p.currentPhase || 'Drafting') === phase);
+        count.textContent = projects.length;
+        
+        body.innerHTML = projects.map(p => `
+            <div class="project-card-kanban" draggable="true" ondragstart="drag(event)" id="${p.id}">
+                <h4>${p.name}</h4>
+                <p>${p.clientName}</p>
+                <div style="margin-top:15px; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:10px; color:var(--accent); font-weight:800;">$${p.revenue}</span>
+                    <button onclick="deleteProject('${p.id}')" style="background:transparent; border:none; color:var(--red); font-size:10px; cursor:pointer;">Del</button>
+                </div>
+            </div>
+        `).join('');
+    });
 }
 
 function renderUsers() {
@@ -136,15 +133,33 @@ function calculateStats() {
     document.getElementById('stat-rev').textContent = '$' + rev.toLocaleString();
     document.getElementById('stat-payout').textContent = '$' + pay.toLocaleString();
     document.getElementById('stat-margin').textContent = Math.round(margin) + '%';
-    
-    // Finance View
-    const finRev = document.getElementById('fin-total-rev');
-    const finExp = document.getElementById('fin-total-exp');
-    if(finRev) finRev.textContent = '$' + rev.toLocaleString();
-    if(finExp) finExp.textContent = '$' + pay.toLocaleString();
 }
 
-// ─── PROJECT ACTIONS ───
+// ─── DRAG AND DROP LOGIC ───
+function allowDrop(ev) { ev.preventDefault(); }
+function drag(ev) { ev.dataTransfer.setData("text", ev.target.id); }
+
+async function drop(ev) {
+    ev.preventDefault();
+    const id = ev.dataTransfer.getData("text");
+    const colBody = ev.currentTarget.classList.contains('col-body') ? ev.currentTarget : ev.currentTarget.querySelector('.col-body');
+    const newPhase = ev.currentTarget.closest('.kanban-col').getAttribute('data-phase');
+    
+    // Update Firestore
+    const phases = ["Drafting", "In Production", "Editing", "Supervision", "Admin Review", "Client Review", "Delivered"];
+    const step = phases.indexOf(newPhase) + 1;
+    
+    try {
+        await db.collection('projects').doc(id).update({
+            currentPhase: newPhase,
+            step: step,
+            progress: Math.round((step / 7) * 100),
+            status: newPhase === 'Delivered' ? 'Completed' : 'Active'
+        });
+    } catch(e) { console.error(e); }
+}
+
+// ─── ACTIONS ───
 function showModal(id) { document.getElementById(id).style.display = 'flex'; }
 function hideModal(id) { document.getElementById(id).style.display = 'none'; }
 
@@ -158,43 +173,25 @@ async function submitNewProject() {
         editorFee: parseFloat(document.getElementById('p-payout').value),
         deadline: document.getElementById('p-deadline').value,
         status: 'Active',
-        progress: 10,
+        progress: 14,
         step: 1,
-        currentPhase: 'Planning',
+        currentPhase: 'Drafting',
         createdAt: new Date().toISOString()
     };
-
     if(!data.name || !data.clientEmail) return alert("Fill required fields!");
-
     try {
         await db.collection('projects').add(data);
         hideModal('project-modal');
-        // Clear inputs
-        ['p-name', 'p-client-name', 'p-client-email', 'p-editor-email', 'p-deadline'].forEach(id => document.getElementById(id).value = '');
-    } catch(e) { alert("Error: " + e.message); }
-}
-
-async function updateProgress(id) {
-    const p = allProjects.find(x => x.id === id);
-    let nextStep = (p.step || 1) + 1;
-    if(nextStep > 7) nextStep = 7;
-    const phases = ["Drafting", "In Production", "Editing", "Supervision", "Admin Review", "Client Review", "Delivered"];
-    
-    await db.collection('projects').doc(id).update({
-        step: nextStep,
-        progress: Math.round((nextStep / 7) * 100),
-        currentPhase: phases[nextStep - 1],
-        status: phases[nextStep - 1] === 'Delivered' ? 'Completed' : 'Active'
-    });
+    } catch(e) { alert(e.message); }
 }
 
 async function deleteProject(id) {
-    if(confirm("Delete this project?")) await db.collection('projects').doc(id).delete();
+    if(confirm("Delete project?")) await db.collection('projects').doc(id).delete();
 }
 
 async function changeRole(email) {
-    const newRole = prompt("Enter new role (admin, editor, client):");
-    if(newRole) await db.collection('users').doc(email).update({ role: newRole });
+    const r = prompt("New role (admin, editor, client):");
+    if(r) await db.collection('users').doc(email).update({ role: r });
 }
 
 // ─── INIT ───
@@ -203,13 +200,12 @@ auth.onAuthStateChanged(user => {
     else document.getElementById('auth-overlay').style.display = 'flex';
 });
 
-// Sidebar Event Listeners
 document.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', (e) => {
         e.preventDefault();
         const view = link.textContent.trim().toLowerCase();
         if(view === 'dashboard') switchView('dashboard', 'Agency Overview');
-        else if(view === 'projects') switchView('projects', 'Project Management');
+        else if(view === 'projects') switchView('projects', 'Kanban Board');
         else if(view === 'finance') switchView('finance', 'Financial Intelligence');
         else if(view === 'clients' || view === 'editors') switchView('users', 'Platform Users');
     });

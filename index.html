@@ -242,6 +242,64 @@
         .form-group label { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
         .form-group input { background: #111; border: 1px solid var(--border); border-radius: 16px; padding: 16px; color: #fff; outline: none; transition: 0.3s; }
         .form-group input:focus { border-color: var(--accent); background: #151515; }
+        /* KANBAN BOARD */
+        .kanban-board {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            padding-bottom: 20px;
+            min-height: 70vh;
+        }
+
+        .kanban-col {
+            min-width: 320px;
+            max-width: 320px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .col-header {
+            padding: 20px 24px;
+            font-size: 14px;
+            font-weight: 800;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .col-header .count {
+            background: rgba(255,255,255,0.05);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .col-body {
+            flex: 1;
+            padding: 16px;
+            min-height: 200px;
+        }
+
+        .project-card-kanban {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 20px;
+            margin-bottom: 16px;
+            cursor: grab;
+            transition: 0.2s;
+        }
+
+        .project-card-kanban:hover { border-color: var(--accent); transform: scale(1.02); }
+        .project-card-kanban:active { cursor: grabbing; }
+
+        .project-card-kanban h4 { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+        .project-card-kanban p { font-size: 12px; color: var(--muted); }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -330,25 +388,37 @@
                 </div>
             </section>
 
-            <!-- PROJECTS VIEW -->
+            <!-- PROJECTS VIEW (KANBAN BOARD) -->
             <section id="view-projects" class="view-section" style="display:none;">
-                <div style="margin-bottom:30px; display:flex; justify-content:space-between; align-items:center;">
-                    <h2 style="font-size: 20px; font-weight: 800;">Global Project Management</h2>
-                </div>
-                <div class="table-container">
-                    <table class="project-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Client Email</th>
-                                <th>Editor Email</th>
-                                <th>Status</th>
-                                <th>Fee</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="full-project-list"></tbody>
-                    </table>
+                <div class="kanban-board" id="kanban-board">
+                    <div class="kanban-col" data-phase="Drafting">
+                        <div class="col-header">Drafting <span class="count">0</span></div>
+                        <div class="col-body" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    </div>
+                    <div class="kanban-col" data-phase="In Production">
+                        <div class="col-header">Production <span class="count">0</span></div>
+                        <div class="col-body" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    </div>
+                    <div class="kanban-col" data-phase="Editing">
+                        <div class="col-header">Editing <span class="count">0</span></div>
+                        <div class="col-body" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    </div>
+                    <div class="kanban-col" data-phase="Supervision">
+                        <div class="col-header">Supervision <span class="count">0</span></div>
+                        <div class="col-body" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    </div>
+                    <div class="kanban-col" data-phase="Admin Review">
+                        <div class="col-header">Admin Review <span class="count">0</span></div>
+                        <div class="col-body" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    </div>
+                    <div class="kanban-col" data-phase="Client Review">
+                        <div class="col-header">Client Review <span class="count">0</span></div>
+                        <div class="col-body" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    </div>
+                    <div class="kanban-col" data-phase="Delivered">
+                        <div class="col-header">Delivered <span class="count">0</span></div>
+                        <div class="col-body" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                    </div>
                 </div>
             </section>
 
