@@ -96,12 +96,18 @@ function renderProjectsList() {
     list.innerHTML = allProjects.map(p => `
         <tr>
             <td><b>${p.name}</b></td>
-            <td style="font-size:12px;">${p.clientEmail}</td>
-            <td style="font-size:12px;">${p.editorEmail}</td>
-            <td><span class="status-badge">${p.status}</span></td>
+            <td>
+                <div style="font-size:11px; color:var(--muted);">${p.clientEmail}</div>
+                ${p.rawAssets ? `<a href="${p.rawAssets}" target="_blank" style="font-size:10px; color:var(--accent);">Download Assets</a>` : '<span style="font-size:10px; color:var(--red);">No Assets Yet</span>'}
+            </td>
+            <td>
+                <div style="font-size:11px; color:var(--muted);">${p.editorEmail}</div>
+                ${p.editorLink ? `<a href="${p.editorLink}" target="_blank" style="font-size:10px; color:var(--green);">Review Work</a>` : ''}
+            </td>
+            <td><span class="status-badge">${p.currentPhase || 'Drafting'}</span></td>
             <td>$${p.editorFee}</td>
             <td>
-                <button onclick="updateProgress('${p.id}')" class="btn-tiny">Step+</button>
+                <button onclick="updateProgress('${p.id}')" class="btn-tiny">Next Step</button>
                 <button onclick="deleteProject('${p.id}')" class="btn-tiny" style="color:#ef4444;">Del</button>
             </td>
         </tr>
@@ -171,13 +177,14 @@ async function submitNewProject() {
 async function updateProgress(id) {
     const p = allProjects.find(x => x.id === id);
     let nextStep = (p.step || 1) + 1;
-    if(nextStep > 5) nextStep = 5;
-    const phases = ["Planning", "Design", "Development", "Testing", "Delivery"];
+    if(nextStep > 7) nextStep = 7;
+    const phases = ["Drafting", "In Production", "Editing", "Supervision", "Admin Review", "Client Review", "Delivered"];
     
     await db.collection('projects').doc(id).update({
         step: nextStep,
-        progress: nextStep * 20,
-        currentPhase: phases[nextStep - 1]
+        progress: Math.round((nextStep / 7) * 100),
+        currentPhase: phases[nextStep - 1],
+        status: phases[nextStep - 1] === 'Delivered' ? 'Completed' : 'Active'
     });
 }
 
