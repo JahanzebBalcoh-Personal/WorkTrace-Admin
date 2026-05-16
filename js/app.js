@@ -142,15 +142,22 @@ function renderKanban() {
 
 function renderUsers() {
     const list = document.getElementById('user-list');
-    list.innerHTML = allUsers.map(u => `
-        <tr>
-            <td><b>${u.name}</b></td>
-            <td>${u.email}</td>
-            <td><span class="status-badge">${u.role.toUpperCase()}</span></td>
-            <td style="font-size:11px;">${u.lastLogin ? u.lastLogin.split('T')[0] : 'N/A'}</td>
-            <td><button onclick="changeRole('${u.email}')" class="btn-tiny">Role</button></td>
-        </tr>
-    `).join('');
+    list.innerHTML = allUsers.map(u => {
+        // We'll need to handle storage fetching separately or assume it's in the user doc
+        // For now, let's use a placeholder and logic to fetch real-time if needed
+        const storageUsed = u.usedBytes ? (u.usedBytes / (1024 ** 3)).toFixed(2) + ' GB' : '0.00 GB';
+        
+        return `
+            <tr>
+                <td><b>${u.name}</b></td>
+                <td>${u.email}</td>
+                <td><span class="status-badge">${u.role.toUpperCase()}</span></td>
+                <td><span style="color:var(--secondary); font-weight:700;">${storageUsed}</span></td>
+                <td style="font-size:11px;">${u.lastLogin ? u.lastLogin.split('T')[0] : 'N/A'}</td>
+                <td><button onclick="changeRole('${u.email}')" class="btn-tiny">Role</button></td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function calculateStats() {
