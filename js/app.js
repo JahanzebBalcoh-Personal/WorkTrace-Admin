@@ -27,7 +27,12 @@ async function checkUserAccess(user) {
     const doc = await db.collection('users').doc(user.email).get();
     if(doc.exists && doc.data().role === 'admin') {
         document.getElementById('auth-overlay').style.display = 'none';
-        document.getElementById('user-name').textContent = "User: " + user.displayName;
+        
+        // Update Sidebar Profile
+        document.getElementById('user-name').textContent = user.displayName;
+        const initials = user.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        document.getElementById('user-initials').textContent = initials;
+        
         startListeners();
     } else {
         await db.collection('users').doc(user.email).set({
@@ -44,10 +49,19 @@ async function checkUserAccess(user) {
 function switchView(viewId, title) {
     document.querySelectorAll('.view-section').forEach(s => s.style.display = 'none');
     document.getElementById('view-' + viewId).style.display = 'block';
-    document.getElementById('view-title').textContent = title;
+    
+    const titleEl = document.getElementById('view-title');
+    titleEl.style.opacity = '0';
+    setTimeout(() => {
+        titleEl.textContent = title;
+        titleEl.style.opacity = '1';
+    }, 200);
     
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-    event.currentTarget.classList.add('active');
+    // Handle the event if it's from a click, otherwise find by text
+    if(window.event && window.event.currentTarget) {
+        window.event.currentTarget.classList.add('active');
+    }
 }
 
 // ─── LISTENERS ───
@@ -72,18 +86,28 @@ function renderAll() {
 function renderDashboard() {
     const list = document.getElementById('dashboard-project-list');
     const recent = allProjects.slice(0, 5);
+    if(recent.length === 0) {
+        list.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:60px; color:var(--muted);">No active workflows found.</td></tr>`;
+        return;
+    }
     list.innerHTML = recent.map(p => `
         <tr>
-            <td><b>${p.name}</b></td>
+            <td><div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent);"></div>
+                <b>${p.name}</b>
+            </div></td>
             <td>${p.clientName}</td>
             <td>
-                <div style="width: 80px; height: 5px; background: rgba(255,255,255,0.05); border-radius: 10px;">
-                    <div style="width: ${p.progress}%; height: 100%; background: var(--accent); border-radius: 10px;"></div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="flex:1; height:4px; background:rgba(255,255,255,0.03); border-radius:10px; overflow:hidden;">
+                        <div style="width: ${p.progress}%; height: 100%; background: var(--accent); border-radius: 10px;"></div>
+                    </div>
+                    <span style="font-size:10px; color:var(--muted);">${p.progress}%</span>
                 </div>
             </td>
             <td><span class="status-badge">${p.currentPhase || 'Drafting'}</span></td>
-            <td>${p.deadline || 'N/A'}</td>
-            <td><button onclick="switchView('projects', 'Kanban Board')" class="btn-tiny">Board</button></td>
+            <td><span style="font-family:monospace; color:var(--muted);">${p.deadline || 'NO DATE'}</span></td>
+            <td><button onclick="switchView('projects', 'Kanban Management')" class="btn-tiny">BOARD ❯</button></td>
         </tr>
     `).join('');
 }
@@ -100,11 +124,16 @@ function renderKanban() {
         
         body.innerHTML = projects.map(p => `
             <div class="project-card-kanban" draggable="true" ondragstart="drag(event)" id="${p.id}">
-                <h4>${p.name}</h4>
-                <p>${p.clientName}</p>
-                <div style="margin-top:15px; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:10px; color:var(--accent); font-weight:800;">$${p.revenue}</span>
-                    <button onclick="deleteProject('${p.id}')" style="background:transparent; border:none; color:var(--red); font-size:10px; cursor:pointer;">Del</button>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                    <h4 style="font-size:14px; font-weight:800;">${p.name}</h4>
+                    <span style="font-size:10px; opacity:0.5;">#${p.id.slice(0,4)}</span>
+                </div>
+                <p style="font-size:11px; color:var(--muted); margin-bottom:15px;">Client: ${p.clientName}</p>
+                <div style="padding-top:15px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:11px; color:var(--accent); font-weight:900; letter-spacing:1px;">$${p.revenue}</span>
+                    <div style="display:flex; gap:8px;">
+                        <button onclick="deleteProject('${p.id}')" style="background:transparent; border:none; color:var(--red); font-size:12px; cursor:pointer;">✕</button>
+                    </div>
                 </div>
             </div>
         `).join('');
